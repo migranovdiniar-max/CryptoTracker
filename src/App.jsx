@@ -7,29 +7,40 @@ function App() {
   const [price, setPrice] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [source, setSource] = useState("");
   const [currency, setCurrency] = useState("USD");
 
-  const fetchPriceForCurrency = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log(`📡 Отправляем запрос для валюты: ${currency}`);
-      const response = await axios.get("https://api.coindesk.com/v1/bpi/currentprice.json")
-
-      const currentRate = response.data.bpi[currency].rate_float; 
-
-      setPrice(Math.round(currentRate));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   useEffect(() => {
+    let ignore = false;
+
+    const fetchPriceForCurrency = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await axios.get(`${CG_PRICE_URL}&vs_currencies=${currency}`);
+        const currentRate = response.data.bitcoin[currency].rate_float;
+
+        if (!ignore) {
+          setPrice(Math.round(currentRate));
+        } else {
+          console.log("error");
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err.message);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     fetchPriceForCurrency();
+
+    return () => {
+      ignore = true;
+    };
   }, [currency])
 
   const handleCurrencyChange = (event) => {
