@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 
 const CG_PRICE_URL = "/api/cg/simple/price?ids=bitcoin&vs_currencies=usd";
@@ -8,91 +8,72 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [source, setSource] = useState("");
+  const [currency, setCurrency] = useState("USD");
 
-  const extractUsdPrice = (payload) => {
-    const usdPrice = payload?.bitcoin?.usd;
-    if (typeof usdPrice !== "number") {
-      throw new Error("Unexpected API response format");
-    }
-    return Math.round(usdPrice);
-  };
-
-  const handleFetchClick = async () => {
+  const fetchPriceForCurrency = async () => {
     setIsLoading(true);
     setError(null);
-    setSource("Fetch 🌐");
 
     try {
-      const response = await fetch(CG_PRICE_URL);
+      console.log(`📡 Отправляем запрос для валюты: ${currency}`);
+      const response = await axios.get("https://api.coindesk.com/v1/bpi/currentprice.json")
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const currentRate = response.data.bpi[currency].rate_float; 
 
-      const data = await response.json();
-      setPrice(extractUsdPrice(data));
+      setPrice(Math.round(currentRate));
     } catch (err) {
-      console.log("Fetch Error:", err);
-      setError(`Не удалось получить цену BTC: ${err.message}`);
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
-  const handleAxiosClick = async () => {
-    setIsLoading(true);
-    setError(null);
-    setSource("Axios 🌐");
+  useEffect(() => {
+    fetchPriceForCurrency();
+  }, [currency])
 
-    try {
-      const response = await axios.get(CG_PRICE_URL);
-      setPrice(extractUsdPrice(response.data));
-    } catch (err) {
-      console.log("Axios Error:", err);
-      setError(`Не удалось получить цену BTC: ${err.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const handleCurrencyChange = (event) => {
+    setCurrency(event.target.value);
+  }
 
-  return (
-    <div style={{ padding: "40px", fontFamily: "Arial" }}>
-      <h1>Сравнение Запросов: Fetch vs Axios 🥊</h1>
+return (
+    <div style={{ padding: "40px", fontFamily: "Arial", maxWidth: "400px" }}>
+      <h2>📈 Умный Крипто-Трекер</h2>
 
-      <div style={{ margin: "20px 0", fontSize: "24px", minHeight: "80px" }}>
-        {isLoading && <p>⏳ Запрашиваем данные...</p>}
-        {error && !isLoading && <p style={{ color: "red" }}>{error}</p>}
-
-        {!isLoading && !error && price && (
-          <div>
-            <p>
-              Текущая цена BTC: <strong>${price}</strong>
-            </p>
-            <p style={{ fontSize: "16px", color: "gray" }}>
-              Данные получены через: {source}
-            </p>
-          </div>
-        )}
-
-        {!isLoading && !error && !price && <p>Нажми на любую кнопку</p>}
+      <div style={{ marginBottom: "20px" }}>
+        <label style={{ marginRight: "10px", fontWeight: "bold" }}>
+          Выберите валюту:
+        </label>
+        <select 
+          value={currency} 
+          onChange={handleCurrencyChange}
+          style={{ padding: "5px 10px", fontSize: "16px" }}
+        >
+          <option value="USD">Доллары (USD)</option>
+          <option value="EUR">Евро (EUR)</option>
+          <option value="GBP">Фунты (GBP)</option>
+        </select>
       </div>
 
-      <div style={{ display: "flex", gap: "10px" }}>
-        <button
-          onClick={handleFetchClick}
-          disabled={isLoading}
-          style={{ padding: "10px 20px", cursor: "pointer" }}
-        >
-          Fetch
-        </button>
-
-        <button
-          onClick={handleAxiosClick}
-          disabled={isLoading}
-          style={{ padding: "10px 20px", cursor: "pointer" }}
-        >
-          Axios
-        </button>
+      <div style={{ 
+        padding: "20px", 
+        border: "1px solid #ccc", 
+        borderRadius: "8px",
+        backgroundColor: "#f9f9f9",
+        minHeight: "60px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}>
+        {isLoading ? (
+          <span style={{ color: "#666" }}>⏳ Запрашиваем курс...</span>
+        ) : error ? (
+          <span style={{ color: "red" }}>{error}</span>
+        ) : (
+          <span style={{ fontSize: "24px" }}>
+            1 BTC = <strong>{price ? price.toLocaleString() : '---'} {currency}</strong>
+          </span>
+        )}
       </div>
     </div>
   );
